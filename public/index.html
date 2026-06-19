@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Chat Simple</title>
+
+    <style>
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #e5ddd5;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+      }
+
+      .chat {
+        width: 390px;
+        height: 600px;
+        background: #ece5dd;
+        display: flex;
+        flex-direction: column;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 0 12px rgba(0, 0, 0, 0.2);
+      }
+
+      .header {
+        background: #075e54;
+        color: white;
+        padding: 16px;
+        font-weight: bold;
+      }
+
+      #messages {
+        flex: 1;
+        padding: 12px;
+        overflow-y: auto;
+      }
+
+      .msg {
+        max-width: 70%;
+        padding: 9px 12px;
+        margin: 8px 0;
+        border-radius: 8px;
+        clear: both;
+        word-wrap: break-word;
+      }
+
+      .mine {
+        background: #dcf8c6;
+        margin-left: auto;
+      }
+
+      .other {
+        background: white;
+        margin-right: auto;
+      }
+
+      .input {
+        display: flex;
+        padding: 10px;
+        background: #f0f0f0;
+      }
+
+      input {
+        flex: 1;
+        padding: 10px;
+        border-radius: 20px;
+        border: none;
+        outline: none;
+      }
+
+      button {
+        margin-left: 8px;
+        border: none;
+        border-radius: 20px;
+        padding: 10px 16px;
+        background: #25d366;
+        color: white;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="chat">
+      <div class="header">Chat privado</div>
+
+      <div id="messages"></div>
+
+      <div class="input">
+        <input id="input" placeholder="Escribe un mensaje..." />
+        <button onclick="enviar()">Enviar</button>
+      </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+
+    <script>
+      const socket = io()
+      const input = document.getElementById('input')
+      const messages = document.getElementById('messages')
+
+      function agregarMensaje(texto, tipo) {
+        const div = document.createElement('div')
+        div.className = 'msg ' + tipo
+        div.textContent = texto
+        messages.appendChild(div)
+        messages.scrollTop = messages.scrollHeight
+      }
+
+      function enviar() {
+        const texto = input.value.trim()
+
+        if (!texto) return
+
+        agregarMensaje(texto, 'mine')
+        socket.emit('mensaje', texto)
+
+        input.value = ''
+      }
+
+      socket.on('mensaje', texto => {
+        agregarMensaje(texto, 'other')
+      })
+
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          enviar()
+        }
+      })
+    </script>
+  </body>
+</html>
