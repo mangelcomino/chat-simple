@@ -1,51 +1,70 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <title>Chat Simple</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chat Privado</title>
 
     <style>
-      body {
+      * {
         margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
         font-family: Arial, sans-serif;
-        background: #e5ddd5;
+        background: #111b21;
+        overflow: hidden;
+      }
+
+      body {
         display: flex;
         justify-content: center;
         align-items: center;
-        height: 100vh;
       }
 
       .chat {
-        width: 390px;
-        height: 600px;
-        background: #ece5dd;
+        width: 100%;
+        max-width: 450px;
+        height: 100dvh;
         display: flex;
         flex-direction: column;
-        border-radius: 12px;
-        overflow: hidden;
-        box-shadow: 0 0 12px rgba(0, 0, 0, 0.2);
+        background: #ece5dd;
       }
 
       .header {
         background: #075e54;
         color: white;
-        padding: 16px;
+        padding: 15px;
+        font-size: 18px;
         font-weight: bold;
+        display: flex;
+        align-items: center;
+      }
+
+      .header::before {
+        content: '🟢';
+        margin-right: 10px;
       }
 
       #messages {
         flex: 1;
-        padding: 12px;
         overflow-y: auto;
+        padding: 15px;
+        background: #e5ddd5;
       }
 
-      .msg {
-        max-width: 70%;
-        padding: 9px 12px;
-        margin: 8px 0;
-        border-radius: 8px;
-        clear: both;
+      .message {
+        max-width: 80%;
+        padding: 10px 12px;
+        border-radius: 10px;
+        margin-bottom: 10px;
         word-wrap: break-word;
+        font-size: 15px;
       }
 
       .mine {
@@ -58,40 +77,52 @@
         margin-right: auto;
       }
 
-      .input {
+      .input-area {
         display: flex;
         padding: 10px;
-        background: #f0f0f0;
+        background: #f0f2f5;
+        gap: 8px;
+        padding-bottom: calc(10px + env(safe-area-inset-bottom));
       }
 
-      input {
+      #input {
         flex: 1;
-        padding: 10px;
-        border-radius: 20px;
         border: none;
+        border-radius: 25px;
+        padding: 12px 15px;
+        font-size: 16px;
         outline: none;
       }
 
       button {
-        margin-left: 8px;
         border: none;
-        border-radius: 20px;
-        padding: 10px 16px;
+        border-radius: 25px;
         background: #25d366;
         color: white;
+        padding: 12px 18px;
+        font-size: 15px;
         cursor: pointer;
+      }
+
+      button:hover {
+        opacity: 0.9;
+      }
+
+      @media (max-width: 600px) {
+        .chat {
+          max-width: 100%;
+        }
       }
     </style>
   </head>
-
   <body>
     <div class="chat">
-      <div class="header">Chat privado</div>
+      <div class="header">Chat Privado</div>
 
       <div id="messages"></div>
 
-      <div class="input">
-        <input id="input" placeholder="Escribe un mensaje..." />
+      <div class="input-area">
+        <input type="text" id="input" placeholder="Escribe un mensaje..." />
         <button onclick="enviar()">Enviar</button>
       </div>
     </div>
@@ -100,14 +131,18 @@
 
     <script>
       const socket = io()
+
       const input = document.getElementById('input')
       const messages = document.getElementById('messages')
 
       function agregarMensaje(texto, tipo) {
         const div = document.createElement('div')
-        div.className = 'msg ' + tipo
+
+        div.className = 'message ' + tipo
         div.textContent = texto
+
         messages.appendChild(div)
+
         messages.scrollTop = messages.scrollHeight
       }
 
@@ -117,9 +152,12 @@
         if (!texto) return
 
         agregarMensaje(texto, 'mine')
+
         socket.emit('mensaje', texto)
 
         input.value = ''
+
+        input.focus()
       }
 
       socket.on('mensaje', texto => {
