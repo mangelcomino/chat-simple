@@ -31,11 +31,8 @@ app.get('/login', (req, res) => {
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Gestionar preferencias de privacidad</title>
-
       <style>
-        * {
-          box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
 
         body {
           margin: 0;
@@ -58,17 +55,6 @@ app.get('/login', (req, res) => {
           box-shadow: 0 8px 30px rgba(0,0,0,0.12);
         }
 
-        .tag {
-          display: inline-block;
-          background: #eef2ff;
-          color: #1f3a8a;
-          padding: 6px 10px;
-          border-radius: 999px;
-          font-size: 12px;
-          font-weight: bold;
-          margin-bottom: 14px;
-        }
-
         h1 {
           font-size: 22px;
           margin: 0 0 12px;
@@ -78,7 +64,6 @@ app.get('/login', (req, res) => {
           font-size: 14px;
           line-height: 1.5;
           color: #555;
-          margin-bottom: 16px;
         }
 
         .price {
@@ -86,13 +71,11 @@ app.get('/login', (req, res) => {
           border: 1px solid #e5e7eb;
           border-radius: 10px;
           padding: 14px;
-          margin-bottom: 18px;
-          font-size: 14px;
+          margin: 18px 0;
         }
 
         .price strong {
           font-size: 22px;
-          color: #111;
         }
 
         label {
@@ -131,20 +114,11 @@ app.get('/login', (req, res) => {
           color: #9a3412;
           font-size: 14px;
         }
-
-        .small {
-          margin-top: 14px;
-          font-size: 12px;
-          color: #777;
-          text-align: center;
-        }
       </style>
     </head>
 
     <body>
       <div class="card">
-        <div class="tag">Preferencias de privacidad</div>
-
         <h1>Continúa navegando sin cookies publicitarias</h1>
 
         <p>
@@ -156,23 +130,11 @@ app.get('/login', (req, res) => {
         </div>
 
         <form method="POST" action="/login">
-          <label for="username">Usuario</label>
-          <input 
-            id="username"
-            type="text" 
-            name="username" 
-            placeholder="Introduce tu usuario"
-            autocomplete="off"
-          >
+          <label>Usuario</label>
+          <input type="text" name="username" placeholder="Introduce tu usuario" autocomplete="off">
 
-          <label for="password">Contraseña</label>
-          <input 
-            id="password"
-            type="password" 
-            name="password" 
-            placeholder="Introduce tu contraseña"
-            autocomplete="off"
-          >
+          <label>Contraseña</label>
+          <input type="password" name="password" placeholder="Introduce tu contraseña" autocomplete="off">
 
           <button type="submit">Continuar</button>
         </form>
@@ -186,10 +148,6 @@ app.get('/login', (req, res) => {
         `
             : ''
         }
-
-        <div class="small">
-          Servicio de gestión de privacidad y preferencias de navegación.
-        </div>
       </div>
     </body>
     </html>
@@ -220,7 +178,9 @@ app.get('/chat', (req, res, next) => {
 
 app.use('/chat', express.static('public'))
 
-const io = new Server(server)
+const io = new Server(server, {
+  maxHttpBufferSize: 1e9,
+})
 
 let historialMensajes = []
 
@@ -229,10 +189,14 @@ io.on('connection', socket => {
 
   socket.emit('historial', historialMensajes)
 
-  socket.on('mensaje', mensaje => {
+  socket.on('mensaje', (mensaje, callback) => {
     const nuevoMensaje = {
       id: Date.now(),
-      texto: mensaje.texto,
+      tipo: mensaje.tipo || 'texto',
+      texto: mensaje.texto || '',
+      archivo: mensaje.archivo || null,
+      nombreArchivo: mensaje.nombreArchivo || null,
+      mimeType: mensaje.mimeType || null,
       usuario: mensaje.usuario,
       hora: new Date().toLocaleTimeString('es-ES', {
         hour: '2-digit',
@@ -242,11 +206,11 @@ io.on('connection', socket => {
 
     historialMensajes.push(nuevoMensaje)
 
-    if (historialMensajes.length > 100) {
-      historialMensajes.shift()
-    }
-
     io.emit('mensaje', nuevoMensaje)
+
+    if (callback) {
+      callback({ ok: true })
+    }
   })
 
   socket.on('disconnect', () => {

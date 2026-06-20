@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tencencias de temporada</title>
+    <title>Ofertas y promociones</title>
 
     <style>
       * {
@@ -52,7 +52,7 @@
       }
 
       .message {
-        max-width: 80%;
+        max-width: 82%;
         padding: 8px 12px;
         border-radius: 10px;
         margin-bottom: 10px;
@@ -78,8 +78,16 @@
         margin-top: 4px;
       }
 
+      .media {
+        max-width: 100%;
+        border-radius: 8px;
+        display: block;
+        margin-bottom: 4px;
+      }
+
       .input-area {
         display: flex;
+        align-items: flex-end;
         padding: 10px;
         background: #f0f2f5;
         gap: 8px;
@@ -106,9 +114,22 @@
         border-radius: 25px;
         background: #25d366;
         color: white;
-        padding: 12px 18px;
+        padding: 12px 16px;
         font-size: 15px;
         cursor: pointer;
+      }
+
+      #attachBtn {
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        padding: 0;
+        font-size: 26px;
+        background: #075e54;
+      }
+
+      #sendBtn {
+        height: 46px;
       }
 
       @media (max-width: 600px) {
@@ -121,18 +142,22 @@
 
   <body>
     <div class="chat">
-      <div class="header">Jop</div>
+      <div class="header">Promociones</div>
 
       <div id="messages"></div>
 
       <div class="input-area">
+        <input type="file" id="fileInput" accept="image/*" hidden />
+
+        <button id="attachBtn" type="button">+</button>
+
         <textarea
           id="input"
           rows="1"
           placeholder="Escribe un mensaje..."
         ></textarea>
 
-        <button id="sendBtn">Enviar</button>
+        <button id="sendBtn" type="button">Enviar</button>
       </div>
     </div>
 
@@ -144,6 +169,8 @@
       const input = document.getElementById('input')
       const messages = document.getElementById('messages')
       const sendBtn = document.getElementById('sendBtn')
+      const attachBtn = document.getElementById('attachBtn')
+      const fileInput = document.getElementById('fileInput')
 
       let usuario = localStorage.getItem('usuarioChat')
 
@@ -152,19 +179,29 @@
         localStorage.setItem('usuarioChat', usuario)
       }
 
+      function escapeHtml(texto) {
+        const div = document.createElement('div')
+        div.textContent = texto
+        return div.innerHTML
+      }
+
       function agregarMensaje(mensaje) {
         const div = document.createElement('div')
 
-        if (mensaje.usuario === usuario) {
-          div.className = 'message mine'
-        } else {
-          div.className = 'message other'
-        }
+        div.className =
+          'message ' + (mensaje.usuario === usuario ? 'mine' : 'other')
 
-        div.innerHTML = `
-            <div>${mensaje.texto}</div>
-            <div class="hora">${mensaje.hora}</div>
+        if (mensaje.tipo === 'imagen' && mensaje.archivo) {
+          div.innerHTML = `
+          <img class="media" src="${mensaje.archivo}" alt="Imagen enviada">
+          <div class="hora">${mensaje.hora}</div>
         `
+        } else {
+          div.innerHTML = `
+          <div>${escapeHtml(mensaje.texto)}</div>
+          <div class="hora">${mensaje.hora}</div>
+        `
+        }
 
         messages.appendChild(div)
         messages.scrollTop = messages.scrollHeight
@@ -173,11 +210,10 @@
       function enviar() {
         const texto = input.value.trim()
 
-        if (texto === '') {
-          return
-        }
+        if (texto === '') return
 
         socket.emit('mensaje', {
+          tipo: 'texto',
           texto: texto,
           usuario: usuario,
         })
@@ -187,11 +223,61 @@
         input.blur()
       }
 
+      function enviarArchivo(file) {
+        if (!file) return
+
+        if (!file.type.startsWith('image/')) {
+          alert('Solo se pueden enviar imágenes o GIFs.')
+          return
+        }
+
+        const temporal = document.createElement('div')
+        temporal.className = 'message mine'
+        temporal.innerHTML = `
+          <div style="font-style: italic; color: #667781;">
+            Enviando archivo...
+          </div>
+          <div class="hora">Enviando...</div>
+        `
+
+        messages.appendChild(temporal)
+        messages.scrollTop = messages.scrollHeight
+
+        const reader = new FileReader()
+
+        reader.onload = function (event) {
+          socket.timeout(60000).emit(
+            'mensaje',
+            {
+              tipo: 'imagen',
+              archivo: event.target.result,
+              nombreArchivo: file.name,
+              mimeType: file.type,
+              usuario: usuario,
+            },
+            function (err) {
+              temporal.remove()
+
+              if (err) {
+                alert('No se pudo enviar el archivo.')
+              }
+            },
+          )
+        }
+
+        reader.onerror = function () {
+          temporal.innerHTML = `
+            <div>No se pudo leer el archivo</div>
+            <div class="hora">Error</div>
+          `
+        }
+
+        reader.readAsDataURL(file)
+      }
+
       socket.on('historial', function (historial) {
         messages.innerHTML = ''
-        historial.forEach(function (mensaje) {
-          agregarMensaje(mensaje)
-        })
+        historial.forEach(agregarMensaje)
       })
 
       socket.on('mensaje', function (mensaje) {
@@ -199,6 +285,16 @@
       })
 
       sendBtn.addEventListener('click', enviar)
+
+      attachBtn.addEventListener('click', function () {
+        fileInput.click()
+      })
+
+      fileInput.addEventListener('change', function () {
+        const file = fileInput.files[0]
+        enviarArchivo(file)
+        fileInput.value = ''
+      })
 
       input.addEventListener('input', function () {
         input.style.height = 'auto'
@@ -209,6 +305,20 @@
         if (event.key === 'Enter' && !event.shiftKey) {
           event.preventDefault()
           enviar()
+        }
+      })
+
+      document.addEventListener('paste', function (event) {
+        if (!event.clipboardData) return
+
+        const items = event.clipboardData.items
+
+        for (const item of items) {
+          if (item.type.startsWith('image/')) {
+            const file = item.getAsFile()
+            enviarArchivo(file)
+            break
+          }
         }
       })
     </script>
