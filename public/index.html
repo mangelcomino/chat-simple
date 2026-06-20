@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Chat Privado</title>
+    <title>Tencencias de temporada</title>
 
     <style>
       * {
@@ -42,13 +42,6 @@
         padding: 15px;
         font-size: 18px;
         font-weight: bold;
-        display: flex;
-        align-items: center;
-      }
-
-      .header::before {
-        content: '🟢';
-        margin-right: 10px;
       }
 
       #messages {
@@ -60,11 +53,12 @@
 
       .message {
         max-width: 80%;
-        padding: 10px 12px;
+        padding: 8px 12px;
         border-radius: 10px;
         margin-bottom: 10px;
         word-wrap: break-word;
         font-size: 15px;
+        line-height: 1.3;
       }
 
       .mine {
@@ -75,6 +69,13 @@
       .other {
         background: white;
         margin-right: auto;
+      }
+
+      .hora {
+        font-size: 11px;
+        color: #667781;
+        text-align: right;
+        margin-top: 4px;
       }
 
       .input-area {
@@ -92,6 +93,12 @@
         padding: 12px 15px;
         font-size: 16px;
         outline: none;
+        resize: none;
+        overflow-y: auto;
+        min-height: 46px;
+        max-height: 120px;
+        line-height: 20px;
+        font-family: Arial, sans-serif;
       }
 
       button {
@@ -104,10 +111,6 @@
         cursor: pointer;
       }
 
-      button:hover {
-        opacity: 0.9;
-      }
-
       @media (max-width: 600px) {
         .chat {
           max-width: 100%;
@@ -115,15 +118,21 @@
       }
     </style>
   </head>
+
   <body>
     <div class="chat">
-      <div class="header">Chat Privado</div>
+      <div class="header">Jop</div>
 
       <div id="messages"></div>
 
       <div class="input-area">
-        <input type="text" id="input" placeholder="Escribe un mensaje..." />
-        <button onclick="enviar()">Enviar</button>
+        <textarea
+          id="input"
+          rows="1"
+          placeholder="Escribe un mensaje..."
+        ></textarea>
+
+        <button id="sendBtn">Enviar</button>
       </div>
     </div>
 
@@ -134,38 +143,71 @@
 
       const input = document.getElementById('input')
       const messages = document.getElementById('messages')
+      const sendBtn = document.getElementById('sendBtn')
 
-      function agregarMensaje(texto, tipo) {
+      let usuario = localStorage.getItem('usuarioChat')
+
+      if (!usuario) {
+        usuario = 'usuario-' + Math.random().toString(36).substring(2, 10)
+        localStorage.setItem('usuarioChat', usuario)
+      }
+
+      function agregarMensaje(mensaje) {
         const div = document.createElement('div')
 
-        div.className = 'message ' + tipo
-        div.textContent = texto
+        if (mensaje.usuario === usuario) {
+          div.className = 'message mine'
+        } else {
+          div.className = 'message other'
+        }
+
+        div.innerHTML = `
+            <div>${mensaje.texto}</div>
+            <div class="hora">${mensaje.hora}</div>
+        `
 
         messages.appendChild(div)
-
         messages.scrollTop = messages.scrollHeight
       }
 
       function enviar() {
         const texto = input.value.trim()
 
-        if (!texto) return
+        if (texto === '') {
+          return
+        }
 
-        agregarMensaje(texto, 'mine')
-
-        socket.emit('mensaje', texto)
+        socket.emit('mensaje', {
+          texto: texto,
+          usuario: usuario,
+        })
 
         input.value = ''
-
-        input.focus()
+        input.style.height = '46px'
+        input.blur()
       }
 
-      socket.on('mensaje', texto => {
-        agregarMensaje(texto, 'other')
+      socket.on('historial', function (historial) {
+        messages.innerHTML = ''
+        historial.forEach(function (mensaje) {
+          agregarMensaje(mensaje)
+        })
       })
 
-      input.addEventListener('keydown', e => {
-        if (e.key === 'Enter') {
+      socket.on('mensaje', function (mensaje) {
+        agregarMensaje(mensaje)
+      })
+
+      sendBtn.addEventListener('click', enviar)
+
+      input.addEventListener('input', function () {
+        input.style.height = 'auto'
+        input.style.height = Math.min(input.scrollHeight, 120) + 'px'
+      })
+
+      input.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' && !event.shiftKey) {
+          event.preventDefault()
           enviar()
         }
       })
