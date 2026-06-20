@@ -137,12 +137,33 @@
           max-width: 100%;
         }
       }
+      .header {
+        background: #075e54;
+        color: white;
+        padding: 15px;
+        font-size: 18px;
+        font-weight: bold;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      #clearBtn {
+        background: transparent;
+        border: none;
+        color: white;
+        font-size: 20px;
+        cursor: pointer;
+      }
     </style>
   </head>
 
   <body>
     <div class="chat">
-      <div class="header">Promociones</div>
+      <div class="header">
+        <span>Promociones</span>
+        <button id="clearBtn">🗑️</button>
+      </div>
 
       <div id="messages"></div>
 
@@ -169,6 +190,7 @@
       const input = document.getElementById('input')
       const messages = document.getElementById('messages')
       const sendBtn = document.getElementById('sendBtn')
+      const clearBtn = document.getElementById('clearBtn')
       const attachBtn = document.getElementById('attachBtn')
       const fileInput = document.getElementById('fileInput')
 
@@ -307,7 +329,20 @@
           enviar()
         }
       })
+      clearBtn.addEventListener('click', function () {
+        const confirmar = confirm('¿Vaciar todo el chat?')
 
+        if (!confirmar) return
+
+        messages.innerHTML = ''
+        messages.scrollTop = 0
+
+        socket.emit('vaciarChat')
+      })
+      socket.on('chatVaciado', () => {
+        messages.innerHTML = ''
+        messages.scrollTop = 0
+      })
       document.addEventListener('paste', function (event) {
         if (!event.clipboardData) return
 

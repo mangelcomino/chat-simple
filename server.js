@@ -216,6 +216,11 @@ io.on('connection', socket => {
   socket.on('disconnect', () => {
     console.log('Usuario desconectado')
   })
+  socket.on('vaciarChat', () => {
+    historialMensajes = []
+
+    io.emit('chatVaciado')
+  })
 })
 
 const PORT = process.env.PORT || 3000
