@@ -51,12 +51,17 @@
         background: #e5ddd5;
       }
 
+      .texto-mensaje {
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
       .message {
         max-width: 82%;
+        width: fit-content;
         padding: 8px 12px;
         border-radius: 10px;
         margin-bottom: 10px;
-        word-wrap: break-word;
         font-size: 15px;
         line-height: 1.3;
       }
@@ -298,10 +303,18 @@
           <div class="hora">${mensaje.hora}</div>
         `
         } else {
-          div.innerHTML = `
-          <div>${escapeHtml(mensaje.texto)}</div>
-          <div class="hora">${mensaje.hora}</div>
-        `
+          div.innerHTML = ''
+
+          const textoDiv = document.createElement('div')
+          textoDiv.className = 'texto-mensaje'
+          textoDiv.textContent = mensaje.texto
+
+          const horaDiv = document.createElement('div')
+          horaDiv.className = 'hora'
+          horaDiv.textContent = mensaje.hora
+
+          div.appendChild(textoDiv)
+          div.appendChild(horaDiv)
         }
 
         messages.appendChild(div)
@@ -409,12 +422,17 @@
           socket.emit('dejoDeEscribir', usuario)
         }, 1200)
       })
+      input.addEventListener('input', function () {
+        input.style.height = 'auto'
+        input.style.height = Math.min(input.scrollHeight, 120) + 'px'
 
-      input.addEventListener('keydown', function (event) {
-        if (event.key === 'Enter' && !event.shiftKey) {
-          event.preventDefault()
-          enviar()
-        }
+        socket.emit('escribiendo', usuario)
+
+        clearTimeout(typingTimeout)
+
+        typingTimeout = setTimeout(() => {
+          socket.emit('dejoDeEscribir', usuario)
+        }, 1200)
       })
       clearBtn.addEventListener('click', function () {
         const confirmar = confirm('¿Vaciar todo el chat?')
