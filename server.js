@@ -183,6 +183,13 @@ const io = new Server(server, {
 })
 
 let historialMensajes = []
+const usuariosActivos = new Set()
+
+function emitirEstadoChat() {
+  io.emit('estadoChat', {
+    usuariosConectados: usuariosActivos.size,
+  })
+}
 
 io.on('connection', socket => {
   console.log('Usuario conectado')
@@ -231,11 +238,31 @@ io.on('connection', socket => {
   })
 
   socket.on('usuarioEnChat', usuario => {
-    socket.broadcast.emit('usuarioConectadoChat', usuario)
+    socket.usuarioChat = usuario
+    usuariosActivos.add(usuario)
+    emitirEstadoChat()
   })
 
   socket.on('usuarioSaleChat', usuario => {
-    socket.broadcast.emit('usuarioDesconectadoChat', usuario)
+    usuariosActivos.delete(usuario)
+    emitirEstadoChat()
+  })
+
+  socket.on('disconnect', () => {
+    if (socket.usuarioChat) {
+      setTimeout(() => {
+        const sigueConectado = Array.from(io.sockets.sockets.values()).some(
+          s => s.usuarioChat === socket.usuarioChat,
+        )
+
+        if (!sigueConectado) {
+          usuariosActivos.delete(socket.usuarioChat)
+          emitirEstadoChat()
+        }
+      }, 1500)
+    }
+
+    console.log('Usuario desconectado')
   })
 })
 

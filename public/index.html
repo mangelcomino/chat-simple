@@ -470,12 +470,12 @@
         typingIndicator.style.display = 'none'
       })
 
-      socket.on('usuarioConectadoChat', function () {
-        statusText.textContent = 'en línea'
-      })
-
-      socket.on('usuarioDesconectadoChat', function () {
-        statusText.textContent = 'desconectado'
+      socket.on('estadoChat', function (estado) {
+        if (estado.usuariosConectados >= 2) {
+          statusText.textContent = 'en línea'
+        } else {
+          statusText.textContent = 'desconectado'
+        }
       })
     </script>
   </body>
