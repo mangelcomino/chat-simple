@@ -214,6 +214,34 @@
         font-size: 20px;
         cursor: pointer;
       }
+      .reply-box {
+        background: #f0f2f5;
+        border-left: 4px solid #25d366;
+        padding: 8px 12px;
+        margin: 0 10px;
+        position: relative;
+      }
+
+      .reply-title {
+        color: #25d366;
+        font-size: 12px;
+        font-weight: bold;
+      }
+
+      #replyText {
+        font-size: 13px;
+        color: #555;
+      }
+
+      #cancelReply {
+        position: absolute;
+        right: 8px;
+        top: 8px;
+        border: none;
+        background: none;
+        color: #666;
+        cursor: pointer;
+      }
     </style>
   </head>
 
@@ -234,6 +262,15 @@
         <span></span>
         <span></span>
       </div>
+
+      <div id="replyPreview" style="display: none">
+        <div class="reply-box">
+          <div class="reply-title">Respondiendo</div>
+          <div id="replyText"></div>
+          <button id="cancelReply">✕</button>
+        </div>
+      </div>
+
       <div class="input-area">
         <input type="file" id="fileInput" accept="image/*" hidden />
 
@@ -260,11 +297,15 @@
       const clearBtn = document.getElementById('clearBtn')
       const attachBtn = document.getElementById('attachBtn')
       const fileInput = document.getElementById('fileInput')
+      const replyPreview = document.getElementById('replyPreview')
+      const replyText = document.getElementById('replyText')
+      const cancelReply = document.getElementById('cancelReply')
       const typingIndicator = document.getElementById('typingIndicator')
       const statusText = document.getElementById('statusText')
       let typingTimeout = null
 
       let usuario = localStorage.getItem('usuarioChat')
+      let mensajeRespuesta = null
 
       if (!usuario) {
         usuario = 'usuario-' + Math.random().toString(36).substring(2, 10)
@@ -296,6 +337,23 @@
 
         div.className =
           'message ' + (mensaje.usuario === usuario ? 'mine' : 'other')
+        div.dataset.id = mensaje.id
+
+        div.addEventListener('dblclick', () => {
+          responderMensaje(mensaje)
+        })
+
+        let pressTimer
+
+        div.addEventListener('touchstart', () => {
+          pressTimer = setTimeout(() => {
+            responderMensaje(mensaje)
+          }, 600)
+        })
+
+        div.addEventListener('touchend', () => {
+          clearTimeout(pressTimer)
+        })
 
         if (mensaje.tipo === 'imagen' && mensaje.archivo) {
           div.innerHTML = `
@@ -304,6 +362,20 @@
         `
         } else {
           div.innerHTML = ''
+
+          if (mensaje.respuesta) {
+            const respuestaDiv = document.createElement('div')
+
+            respuestaDiv.style.borderLeft = '3px solid #25d366'
+            respuestaDiv.style.paddingLeft = '8px'
+            respuestaDiv.style.marginBottom = '6px'
+            respuestaDiv.style.fontSize = '12px'
+            respuestaDiv.style.color = '#555'
+
+            respuestaDiv.textContent = mensaje.respuesta
+
+            div.appendChild(respuestaDiv)
+          }
 
           const textoDiv = document.createElement('div')
           textoDiv.className = 'texto-mensaje'
@@ -330,11 +402,16 @@
           tipo: 'texto',
           texto: texto,
           usuario: usuario,
+          respuesta: mensajeRespuesta
+            ? mensajeRespuesta.texto || '[Imagen]'
+            : null,
         })
 
         input.value = ''
         input.style.height = '46px'
         input.blur()
+        mensajeRespuesta = null
+        replyPreview.style.display = 'none'
       }
 
       function enviarArchivo(file) {
@@ -387,6 +464,14 @@
         }
 
         reader.readAsDataURL(file)
+      }
+
+      function responderMensaje(mensaje) {
+        mensajeRespuesta = mensaje
+
+        replyText.textContent = mensaje.texto || '[Imagen]'
+
+        replyPreview.style.display = 'block'
       }
 
       socket.on('historial', function (historial) {
@@ -460,6 +545,10 @@
             break
           }
         }
+      })
+      cancelReply.addEventListener('click', () => {
+        mensajeRespuesta = null
+        replyPreview.style.display = 'none'
       })
 
       socket.on('usuarioEscribiendo', function () {

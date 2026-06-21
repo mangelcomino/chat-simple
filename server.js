@@ -209,6 +209,7 @@ io.on('connection', socket => {
         hour: '2-digit',
         minute: '2-digit',
       }),
+      respuesta: mensaje.respuesta || null,
     }
 
     historialMensajes.push(nuevoMensaje)
