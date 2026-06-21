@@ -221,6 +221,22 @@ io.on('connection', socket => {
 
     io.emit('chatVaciado')
   })
+
+  socket.on('escribiendo', usuario => {
+    socket.broadcast.emit('usuarioEscribiendo', usuario)
+  })
+
+  socket.on('dejoDeEscribir', usuario => {
+    socket.broadcast.emit('usuarioDejoDeEscribir', usuario)
+  })
+
+  socket.on('usuarioEnChat', usuario => {
+    socket.broadcast.emit('usuarioConectadoChat', usuario)
+  })
+
+  socket.on('usuarioSaleChat', usuario => {
+    socket.broadcast.emit('usuarioDesconectadoChat', usuario)
+  })
 })
 
 const PORT = process.env.PORT || 3000

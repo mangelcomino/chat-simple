@@ -155,18 +155,80 @@
         font-size: 20px;
         cursor: pointer;
       }
+      .typing-indicator {
+        display: none;
+        width: fit-content;
+        background: white;
+        padding: 10px 14px;
+        border-radius: 12px;
+        margin: 0 15px 10px 15px;
+        gap: 4px;
+      }
+
+      .typing-indicator span {
+        width: 7px;
+        height: 7px;
+        background: #667781;
+        border-radius: 50%;
+        display: inline-block;
+        animation: blink 1.4s infinite both;
+      }
+
+      .typing-indicator span:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+
+      .typing-indicator span:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+
+      @keyframes blink {
+        0% {
+          opacity: 0.2;
+        }
+        20% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0.2;
+        }
+      }
+
+      .status-text {
+        display: block;
+        font-size: 12px;
+        font-weight: normal;
+        opacity: 0.9;
+        margin-top: 2px;
+      }
+
+      #clearBtn {
+        background: transparent;
+        border: none;
+        color: white;
+        font-size: 20px;
+        cursor: pointer;
+      }
     </style>
   </head>
 
   <body>
     <div class="chat">
       <div class="header">
-        <span>Promociones</span>
+        <div>
+          <span>JOP</span>
+          <span id="statusText" class="status-text">desconectado</span>
+        </div>
+
         <button id="clearBtn">🗑️</button>
       </div>
 
       <div id="messages"></div>
-
+      <div id="typingIndicator" class="typing-indicator">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
       <div class="input-area">
         <input type="file" id="fileInput" accept="image/*" hidden />
 
@@ -193,6 +255,9 @@
       const clearBtn = document.getElementById('clearBtn')
       const attachBtn = document.getElementById('attachBtn')
       const fileInput = document.getElementById('fileInput')
+      const typingIndicator = document.getElementById('typingIndicator')
+      const statusText = document.getElementById('statusText')
+      let typingTimeout = null
 
       let usuario = localStorage.getItem('usuarioChat')
 
@@ -200,6 +265,20 @@
         usuario = 'usuario-' + Math.random().toString(36).substring(2, 10)
         localStorage.setItem('usuarioChat', usuario)
       }
+
+      socket.emit('usuarioEnChat', usuario)
+
+      window.addEventListener('beforeunload', function () {
+        socket.emit('usuarioSaleChat', usuario)
+      })
+
+      document.addEventListener('visibilitychange', function () {
+        if (document.hidden) {
+          socket.emit('usuarioSaleChat', usuario)
+        } else {
+          socket.emit('usuarioEnChat', usuario)
+        }
+      })
 
       function escapeHtml(texto) {
         const div = document.createElement('div')
@@ -321,6 +400,14 @@
       input.addEventListener('input', function () {
         input.style.height = 'auto'
         input.style.height = Math.min(input.scrollHeight, 120) + 'px'
+
+        socket.emit('escribiendo', usuario)
+
+        clearTimeout(typingTimeout)
+
+        typingTimeout = setTimeout(() => {
+          socket.emit('dejoDeEscribir', usuario)
+        }, 1200)
       })
 
       input.addEventListener('keydown', function (event) {
@@ -355,6 +442,22 @@
             break
           }
         }
+      })
+
+      socket.on('usuarioEscribiendo', function () {
+        typingIndicator.style.display = 'flex'
+      })
+
+      socket.on('usuarioDejoDeEscribir', function () {
+        typingIndicator.style.display = 'none'
+      })
+
+      socket.on('usuarioConectadoChat', function () {
+        statusText.textContent = 'en línea'
+      })
+
+      socket.on('usuarioDesconectadoChat', function () {
+        statusText.textContent = 'desconectado'
       })
     </script>
   </body>
