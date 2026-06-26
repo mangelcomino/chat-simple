@@ -183,7 +183,7 @@ const io = new Server(server, {
 })
 
 let historialMensajes = []
-const usuariosActivos = new Set()
+const usuariosActivos = new Map()
 
 function emitirEstadoChat() {
   io.emit('estadoChat', {
