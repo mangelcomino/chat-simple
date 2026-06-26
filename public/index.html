@@ -374,10 +374,17 @@
           <div class="hora">${mensaje.hora}</div>
         `
         } else if (mensaje.tipo === 'audio' && mensaje.archivo) {
-          div.innerHTML = `
-            <audio controls src="${mensaje.archivo}"></audio>
-            <div class="hora">${mensaje.hora}</div>
-          `
+          const audio = document.createElement('audio')
+          audio.controls = true
+          audio.src = mensaje.archivo
+          audio.style.maxWidth = '100%'
+
+          const horaDiv = document.createElement('div')
+          horaDiv.className = 'hora'
+          horaDiv.textContent = mensaje.hora
+
+          div.appendChild(audio)
+          div.appendChild(horaDiv)
         } else {
           div.innerHTML = ''
 
@@ -493,14 +500,13 @@
       }
       function obtenerMimeAudioCompatible() {
         const tipos = [
+          'audio/mp4',
           'audio/webm;codecs=opus',
           'audio/webm',
-          'audio/mp4',
-          'audio/mpeg',
         ]
 
         for (const tipo of tipos) {
-          if (MediaRecorder.isTypeSupported(tipo)) {
+          if (window.MediaRecorder && MediaRecorder.isTypeSupported(tipo)) {
             return tipo
           }
         }
@@ -516,10 +522,7 @@
           }
 
           if (!grabandoAudio) {
-            const stream = await navigator.mediaDevices.getUserMedia({
-              audio: true,
-            })
-
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
             const mimeType = obtenerMimeAudioCompatible()
 
             mediaRecorder = mimeType
@@ -529,25 +532,25 @@
             audioChunks = []
 
             mediaRecorder.ondataavailable = function (event) {
-              if (event.data.size > 0) {
+              if (event.data && event.data.size > 0) {
                 audioChunks.push(event.data)
               }
             }
 
             mediaRecorder.onstop = function () {
-              const tipoFinal =
-                mediaRecorder.mimeType || mimeType || 'audio/webm'
-              const extension = tipoFinal.includes('mp4') ? 'm4a' : 'webm'
+              const tipoFinal = mediaRecorder.mimeType || mimeType || ''
+              const audioBlob = new Blob(audioChunks, {
+                type: tipoFinal || audioChunks[0]?.type || 'audio/mp4',
+              })
 
-              const audioBlob = new Blob(audioChunks, { type: tipoFinal })
               const reader = new FileReader()
 
               reader.onload = function (event) {
                 socket.emit('mensaje', {
                   tipo: 'audio',
                   archivo: event.target.result,
-                  nombreArchivo: `audio.${extension}`,
-                  mimeType: tipoFinal,
+                  nombreArchivo: 'audio',
+                  mimeType: audioBlob.type,
                   usuario: usuario,
                   respuesta: mensajeRespuesta
                     ? mensajeRespuesta.texto || '[Imagen]'
@@ -562,18 +565,23 @@
               stream.getTracks().forEach(track => track.stop())
             }
 
-            mediaRecorder.start()
+            mediaRecorder.start(1000)
 
             grabandoAudio = true
             audioBtn.textContent = '⏹️'
           } else {
-            mediaRecorder.stop()
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+              mediaRecorder.stop()
+            }
+
             grabandoAudio = false
             audioBtn.textContent = '🎤'
           }
         } catch (error) {
           console.error(error)
-          alert('No se pudo acceder al micrófono. Revisa permisos o usa HTTPS.')
+          alert('No se pudo grabar el audio. Revisa permisos o usa HTTPS.')
+          grabandoAudio = false
+          audioBtn.textContent = '🎤'
         }
       }
       socket.on('historial', function (historial) {
