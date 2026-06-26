@@ -191,7 +191,6 @@ function emitirEstadoChat() {
   })
 }
 
-const usuariosActivos = new Map()
 
 function emitirEstadoChat() {
   const ahora = Date.now()
