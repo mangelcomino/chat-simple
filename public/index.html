@@ -259,6 +259,15 @@
       .checks.leido {
         color: #34b7f1;
       }
+      .checks {
+        font-size: 12px;
+        margin-left: 4px;
+        color: #667781;
+      }
+
+      .checks.leido {
+        color: #34b7f1;
+      }
     </style>
   </head>
 
@@ -356,6 +365,33 @@
         return div.innerHTML
       }
 
+
+      function crearHoraConChecks(mensaje) {
+        const horaDiv = document.createElement('div')
+        horaDiv.className = 'hora'
+
+        const horaTexto = document.createElement('span')
+        horaTexto.textContent = mensaje.hora
+
+        horaDiv.appendChild(horaTexto)
+
+        if (mensaje.usuario === usuario) {
+          const checks = document.createElement('span')
+          checks.className = 'checks'
+          checks.dataset.checkId = mensaje.id
+
+          if (mensaje.estado === 'leido') {
+            checks.classList.add('leido')
+          }
+
+          checks.textContent = mensaje.estado === 'enviado' ? ' ✓' : ' ✓✓'
+
+          horaDiv.appendChild(checks)
+        }
+
+        return horaDiv
+      }
+
       function agregarMensaje(mensaje) {
         const div = document.createElement('div')
 
@@ -435,9 +471,7 @@
           textoDiv.className = 'texto-mensaje'
           textoDiv.textContent = mensaje.texto
 
-          const horaDiv = document.createElement('div')
-          horaDiv.className = 'hora'
-          horaDiv.textContent = mensaje.hora
+          const horaDiv = crearHoraConChecks(mensaje)
 
           div.appendChild(textoDiv)
           div.appendChild(horaDiv)
