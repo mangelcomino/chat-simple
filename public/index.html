@@ -339,7 +339,10 @@
       let mensajeRespuesta = null
 
       if (!usuario) {
-        usuario = 'usuario-' + Math.random().toString(36).substring(2, 10)
+        const esMovil = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+        const prefijo = esMovil ? 'movil' : 'escritorio'
+
+        usuario = prefijo + '-' + Math.random().toString(36).substring(2, 10)
         localStorage.setItem('usuarioChat', usuario)
       }
 
