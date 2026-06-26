@@ -223,6 +223,7 @@ io.on('connection', socket => {
       nombreArchivo: mensaje.nombreArchivo || null,
       mimeType: mensaje.mimeType || null,
       usuario: mensaje.usuario,
+      estado: 'enviado',
       hora: new Date().toLocaleTimeString('es-ES', {
         hour: '2-digit',
         minute: '2-digit',
@@ -233,7 +234,10 @@ io.on('connection', socket => {
     historialMensajes.push(nuevoMensaje)
 
     io.emit('mensaje', nuevoMensaje)
-
+    socket.emit('estadoMensaje', {
+      id: nuevoMensaje.id,
+      estado: 'enviado',
+    })
     if (callback) {
       callback({ ok: true })
     }
@@ -277,6 +281,33 @@ io.on('connection', socket => {
     usuariosActivos.set(usuario, Date.now())
     emitirEstadoChat()
   })
+
+  socket.on('mensajeEntregado', data => {
+    const mensaje = historialMensajes.find(m => m.id === data.id)
+
+    if (mensaje && mensaje.usuario !== data.usuario && mensaje.estado === 'enviado') {
+      mensaje.estado = 'entregado'
+
+      io.emit('estadoMensaje', {
+        id: mensaje.id,
+        estado: 'entregado',
+      })
+    }
+  })
+
+  socket.on('mensajeLeido', data => {
+    const mensaje = historialMensajes.find(m => m.id === data.id)
+
+    if (mensaje && mensaje.usuario !== data.usuario) {
+      mensaje.estado = 'leido'
+
+      io.emit('estadoMensaje', {
+        id: mensaje.id,
+        estado: 'leido',
+      })
+    }
+  })
+
 })
 
 const PORT = process.env.PORT || 3000

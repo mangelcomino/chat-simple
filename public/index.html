@@ -250,6 +250,15 @@
         font-size: 20px;
         background: #075e54;
       }
+      .checks {
+        font-size: 12px;
+        margin-left: 4px;
+        color: #667781;
+      }
+
+      .checks.leido {
+        color: #34b7f1;
+      }
     </style>
   </head>
 
@@ -373,7 +382,16 @@
         if (mensaje.tipo === 'imagen' && mensaje.archivo) {
           div.innerHTML = `
           <img class="media" src="${mensaje.archivo}" alt="Imagen enviada">
-          <div class="hora">${mensaje.hora}</div>
+          <div class="hora">
+            ${mensaje.hora}
+            ${
+              mensaje.usuario === usuario
+                ? `<span class="checks ${mensaje.estado === 'leido' ? 'leido' : ''}" data-check-id="${mensaje.id}">
+                    ${mensaje.estado === 'enviado' ? '✓' : '✓✓'}
+                  </span>`
+                : ''
+            }
+          </div>
         `
         } else if (mensaje.tipo === 'audio' && mensaje.archivo) {
           const audio = document.createElement('audio')
@@ -383,7 +401,16 @@
 
           const horaDiv = document.createElement('div')
           horaDiv.className = 'hora'
-          horaDiv.textContent = mensaje.hora
+          horaDiv.innerHTML = `
+            ${mensaje.hora}
+            ${
+              mensaje.usuario === usuario
+                ? `<span class="checks ${mensaje.estado === 'leido' ? 'leido' : ''}" data-check-id="${mensaje.id}">
+                    ${mensaje.estado === 'enviado' ? '✓' : '✓✓'}
+                  </span>`
+                : ''
+            }
+          `
 
           div.appendChild(audio)
           div.appendChild(horaDiv)
@@ -415,7 +442,17 @@
           div.appendChild(textoDiv)
           div.appendChild(horaDiv)
         }
+        if (mensaje.usuario !== usuario) {
+          socket.emit('mensajeEntregado', {
+            id: mensaje.id,
+            usuario: usuario,
+          })
 
+          socket.emit('mensajeLeido', {
+            id: mensaje.id,
+            usuario: usuario,
+          })
+        }
         messages.appendChild(div)
         messages.scrollTop = messages.scrollHeight
       }
@@ -679,6 +716,21 @@
         }
       })
       audioBtn.addEventListener('click', alternarGrabacionAudio)
+
+      socket.on('estadoMensaje', function (data) {
+        const check = document.querySelector(`[data-check-id="${data.id}"]`)
+
+        if (!check) return
+
+        check.textContent = data.estado === 'enviado' ? '✓' : '✓✓'
+
+        if (data.estado === 'leido') {
+          check.classList.add('leido')
+        } else {
+          check.classList.remove('leido')
+        }
+      })
+
     </script>
   </body>
 </html>
