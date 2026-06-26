@@ -224,10 +224,7 @@ io.on('connection', socket => {
       mimeType: mensaje.mimeType || null,
       usuario: mensaje.usuario,
       estado: 'enviado',
-      hora: new Date().toLocaleTimeString('es-ES', {
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
+      hora: mensaje.hora,
       respuesta: mensaje.respuesta || null,
     }
 

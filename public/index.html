@@ -499,14 +499,18 @@
 
         if (texto === '') return
 
-        socket.emit('mensaje', {
-          tipo: 'texto',
-          texto: texto,
-          usuario: usuario,
-          respuesta: mensajeRespuesta
-            ? mensajeRespuesta.texto || '[Imagen]'
-            : null,
+      socket.emit('mensaje', {
+        tipo: 'texto',
+        texto: texto,
+        usuario: usuario,
+        respuesta: mensajeRespuesta
+          ? mensajeRespuesta.texto || '[Imagen]'
+          : null,
+        hora: new Date().toLocaleTimeString('es-ES', {
+          hour: '2-digit',
+          minute: '2-digit'
         })
+      })
 
         input.value = ''
         input.style.height = '46px'
@@ -546,6 +550,11 @@
               nombreArchivo: file.name,
               mimeType: file.type,
               usuario: usuario,
+              hora: new Date().toLocaleTimeString('es-ES', {
+                hour: '2-digit',
+                minute: '2-digit'
+              }),
+                            
             },
             function (err) {
               temporal.remove()
@@ -631,6 +640,10 @@
                   respuesta: mensajeRespuesta
                     ? mensajeRespuesta.texto || '[Imagen]'
                     : null,
+                  hora: new Date().toLocaleTimeString('es-ES', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  }),
                 })
 
                 mensajeRespuesta = null
