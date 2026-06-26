@@ -242,6 +242,14 @@
         color: #666;
         cursor: pointer;
       }
+      #audioBtn {
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        padding: 0;
+        font-size: 20px;
+        background: #075e54;
+      }
     </style>
   </head>
 
@@ -275,7 +283,7 @@
         <input type="file" id="fileInput" accept="image/*" hidden />
 
         <button id="attachBtn" type="button">+</button>
-
+        <button id="audioBtn" type="button">🎤</button>   
         <textarea
           id="input"
           rows="1"
@@ -302,6 +310,11 @@
       const cancelReply = document.getElementById('cancelReply')
       const typingIndicator = document.getElementById('typingIndicator')
       const statusText = document.getElementById('statusText')
+      const audioBtn = document.getElementById('audioBtn')
+
+      let mediaRecorder = null
+      let audioChunks = []
+      let grabandoAudio = false
       let typingTimeout = null
 
       let usuario = localStorage.getItem('usuarioChat')
@@ -360,6 +373,11 @@
           <img class="media" src="${mensaje.archivo}" alt="Imagen enviada">
           <div class="hora">${mensaje.hora}</div>
         `
+        } else if (mensaje.tipo === 'audio' && mensaje.archivo) {
+          div.innerHTML = `
+            <audio controls src="${mensaje.archivo}"></audio>
+            <div class="hora">${mensaje.hora}</div>
+          `
         } else {
           div.innerHTML = ''
 
@@ -473,7 +491,51 @@
 
         replyPreview.style.display = 'block'
       }
+      async function alternarGrabacionAudio() {
+        if (!grabandoAudio) {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
 
+          mediaRecorder = new MediaRecorder(stream)
+          audioChunks = []
+
+          mediaRecorder.ondataavailable = function (event) {
+            audioChunks.push(event.data)
+          }
+
+          mediaRecorder.onstop = function () {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' })
+            const reader = new FileReader()
+
+            reader.onload = function (event) {
+              socket.emit('mensaje', {
+                tipo: 'audio',
+                archivo: event.target.result,
+                nombreArchivo: 'audio.webm',
+                mimeType: 'audio/webm',
+                usuario: usuario,
+                respuesta: mensajeRespuesta
+                  ? mensajeRespuesta.texto || '[Imagen]'
+                  : null,
+              })
+
+              mensajeRespuesta = null
+              replyPreview.style.display = 'none'
+            }
+
+            reader.readAsDataURL(audioBlob)
+
+            stream.getTracks().forEach(track => track.stop())
+          }
+
+          mediaRecorder.start()
+          grabandoAudio = true
+          audioBtn.textContent = '⏹️'
+        } else {
+          mediaRecorder.stop()
+          grabandoAudio = false
+          audioBtn.textContent = '🎤'
+        }
+      }
       socket.on('historial', function (historial) {
         messages.innerHTML = ''
         historial.forEach(agregarMensaje)
@@ -566,6 +628,7 @@
           statusText.textContent = 'desconectado'
         }
       })
+      audioBtn.addEventListener('click', alternarGrabacionAudio)
     </script>
   </body>
 </html>
