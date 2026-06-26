@@ -283,7 +283,7 @@
         <input type="file" id="fileInput" accept="image/*" hidden />
 
         <button id="attachBtn" type="button">+</button>
-        <button id="audioBtn" type="button">🎤</button>   
+        <button id="audioBtn" type="button">🎤</button>
         <textarea
           id="input"
           rows="1"
@@ -491,49 +491,89 @@
 
         replyPreview.style.display = 'block'
       }
+      function obtenerMimeAudioCompatible() {
+        const tipos = [
+          'audio/webm;codecs=opus',
+          'audio/webm',
+          'audio/mp4',
+          'audio/mpeg',
+        ]
+
+        for (const tipo of tipos) {
+          if (MediaRecorder.isTypeSupported(tipo)) {
+            return tipo
+          }
+        }
+
+        return ''
+      }
+
       async function alternarGrabacionAudio() {
-        if (!grabandoAudio) {
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-
-          mediaRecorder = new MediaRecorder(stream)
-          audioChunks = []
-
-          mediaRecorder.ondataavailable = function (event) {
-            audioChunks.push(event.data)
+        try {
+          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            alert('El navegador no permite grabar audio.')
+            return
           }
 
-          mediaRecorder.onstop = function () {
-            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' })
-            const reader = new FileReader()
+          if (!grabandoAudio) {
+            const stream = await navigator.mediaDevices.getUserMedia({
+              audio: true,
+            })
 
-            reader.onload = function (event) {
-              socket.emit('mensaje', {
-                tipo: 'audio',
-                archivo: event.target.result,
-                nombreArchivo: 'audio.webm',
-                mimeType: 'audio/webm',
-                usuario: usuario,
-                respuesta: mensajeRespuesta
-                  ? mensajeRespuesta.texto || '[Imagen]'
-                  : null,
-              })
+            const mimeType = obtenerMimeAudioCompatible()
 
-              mensajeRespuesta = null
-              replyPreview.style.display = 'none'
+            mediaRecorder = mimeType
+              ? new MediaRecorder(stream, { mimeType })
+              : new MediaRecorder(stream)
+
+            audioChunks = []
+
+            mediaRecorder.ondataavailable = function (event) {
+              if (event.data.size > 0) {
+                audioChunks.push(event.data)
+              }
             }
 
-            reader.readAsDataURL(audioBlob)
+            mediaRecorder.onstop = function () {
+              const tipoFinal =
+                mediaRecorder.mimeType || mimeType || 'audio/webm'
+              const extension = tipoFinal.includes('mp4') ? 'm4a' : 'webm'
 
-            stream.getTracks().forEach(track => track.stop())
+              const audioBlob = new Blob(audioChunks, { type: tipoFinal })
+              const reader = new FileReader()
+
+              reader.onload = function (event) {
+                socket.emit('mensaje', {
+                  tipo: 'audio',
+                  archivo: event.target.result,
+                  nombreArchivo: `audio.${extension}`,
+                  mimeType: tipoFinal,
+                  usuario: usuario,
+                  respuesta: mensajeRespuesta
+                    ? mensajeRespuesta.texto || '[Imagen]'
+                    : null,
+                })
+
+                mensajeRespuesta = null
+                replyPreview.style.display = 'none'
+              }
+
+              reader.readAsDataURL(audioBlob)
+              stream.getTracks().forEach(track => track.stop())
+            }
+
+            mediaRecorder.start()
+
+            grabandoAudio = true
+            audioBtn.textContent = '⏹️'
+          } else {
+            mediaRecorder.stop()
+            grabandoAudio = false
+            audioBtn.textContent = '🎤'
           }
-
-          mediaRecorder.start()
-          grabandoAudio = true
-          audioBtn.textContent = '⏹️'
-        } else {
-          mediaRecorder.stop()
-          grabandoAudio = false
-          audioBtn.textContent = '🎤'
+        } catch (error) {
+          console.error(error)
+          alert('No se pudo acceder al micrófono. Revisa permisos o usa HTTPS.')
         }
       }
       socket.on('historial', function (historial) {
