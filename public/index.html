@@ -326,7 +326,9 @@
       }
 
       socket.emit('usuarioEnChat', usuario)
-
+      setInterval(() => {
+        socket.emit('heartbeat', usuario)
+      }, 3000)
       window.addEventListener('beforeunload', function () {
         socket.emit('usuarioSaleChat', usuario)
       })

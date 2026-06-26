@@ -191,6 +191,25 @@ function emitirEstadoChat() {
   })
 }
 
+const usuariosActivos = new Map()
+
+function emitirEstadoChat() {
+  const ahora = Date.now()
+  const LIMITE_ACTIVO = 10000
+
+  for (const [usuario, ultimaVez] of usuariosActivos.entries()) {
+    if (ahora - ultimaVez > LIMITE_ACTIVO) {
+      usuariosActivos.delete(usuario)
+    }
+  }
+
+  io.emit('estadoChat', {
+    usuariosConectados: usuariosActivos.size,
+  })
+}
+
+setInterval(emitirEstadoChat, 3000)
+
 io.on('connection', socket => {
   console.log('Usuario conectado')
 
@@ -222,6 +241,12 @@ io.on('connection', socket => {
   })
 
   socket.on('disconnect', () => {
+    if (socket.usuarioChat) {
+      setTimeout(() => {
+        emitirEstadoChat()
+      }, 3000)
+    }
+
     console.log('Usuario desconectado')
   })
   socket.on('vaciarChat', () => {
@@ -240,7 +265,7 @@ io.on('connection', socket => {
 
   socket.on('usuarioEnChat', usuario => {
     socket.usuarioChat = usuario
-    usuariosActivos.add(usuario)
+    usuariosActivos.set(usuario, Date.now())
     emitirEstadoChat()
   })
 
@@ -248,22 +273,10 @@ io.on('connection', socket => {
     usuariosActivos.delete(usuario)
     emitirEstadoChat()
   })
-
-  socket.on('disconnect', () => {
-    if (socket.usuarioChat) {
-      setTimeout(() => {
-        const sigueConectado = Array.from(io.sockets.sockets.values()).some(
-          s => s.usuarioChat === socket.usuarioChat,
-        )
-
-        if (!sigueConectado) {
-          usuariosActivos.delete(socket.usuarioChat)
-          emitirEstadoChat()
-        }
-      }, 1500)
-    }
-
-    console.log('Usuario desconectado')
+  socket.on('heartbeat', usuario => {
+    socket.usuarioChat = usuario
+    usuariosActivos.set(usuario, Date.now())
+    emitirEstadoChat()
   })
 })
 
