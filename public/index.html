@@ -371,6 +371,9 @@
         } else {
           socket.emit('usuarioEnChat', usuario)
         }
+        if (!document.hidden) {
+          marcarMensajesComoLeidos()
+        }
       })
 
       function escapeHtml(texto) {
@@ -517,22 +520,21 @@
             usuario: usuario,
           })
 
-          socket.emit('mensajeLeido', {
-            id: mensaje.id,
-            usuario: usuario,
-          })
         }
 
-        if (mensaje.usuario !== usuario) {
-          socket.emit('mensajeEntregado', {
-            id: mensaje.id,
-            usuario: usuario,
-          })
+        function marcarMensajesComoLeidos() {
 
-          socket.emit('mensajeLeido', {
-            id: mensaje.id,
-            usuario: usuario,
-          })
+            document.querySelectorAll('.message.other').forEach(msg => {
+
+                const id = Number(msg.dataset.id)
+
+                socket.emit('mensajeLeido', {
+                    id,
+                    usuario
+                })
+
+            })
+
         }
 
         messages.appendChild(div)
