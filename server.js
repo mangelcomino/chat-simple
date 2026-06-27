@@ -216,7 +216,7 @@ io.on('connection', socket => {
 
   socket.on('mensaje', (mensaje, callback) => {
     const nuevoMensaje = {
-      id: Date.now(),
+      id: mensaje.id || Date.now(),
       tipo: mensaje.tipo || 'texto',
       texto: mensaje.texto || '',
       archivo: mensaje.archivo || null,
@@ -282,7 +282,10 @@ io.on('connection', socket => {
   socket.on('mensajeEntregado', data => {
     const mensaje = historialMensajes.find(m => m.id === data.id)
 
-    if (mensaje && mensaje.usuario !== data.usuario && mensaje.estado === 'enviado') {
+    if (!mensaje) return
+    if (mensaje.usuario === data.usuario) return
+
+    if (mensaje.estado === 'enviado') {
       mensaje.estado = 'entregado'
 
       io.emit('estadoMensaje', {
@@ -295,14 +298,15 @@ io.on('connection', socket => {
   socket.on('mensajeLeido', data => {
     const mensaje = historialMensajes.find(m => m.id === data.id)
 
-    if (mensaje && mensaje.usuario !== data.usuario) {
-      mensaje.estado = 'leido'
+    if (!mensaje) return
+    if (mensaje.usuario === data.usuario) return
 
-      io.emit('estadoMensaje', {
-        id: mensaje.id,
-        estado: 'leido',
-      })
-    }
+    mensaje.estado = 'leido'
+
+    io.emit('estadoMensaje', {
+      id: mensaje.id,
+      estado: 'leido',
+    })
   })
 
 })

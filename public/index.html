@@ -124,15 +124,6 @@
         cursor: pointer;
       }
 
-      #attachBtn {
-        width: 46px;
-        height: 46px;
-        border-radius: 50%;
-        padding: 0;
-        font-size: 26px;
-        background: #075e54;
-      }
-
       #sendBtn {
         height: 46px;
       }
@@ -242,13 +233,23 @@
         color: #666;
         cursor: pointer;
       }
-      #audioBtn {
-        width: 46px;
-        height: 46px;
-        border-radius: 50%;
-        padding: 0;
-        font-size: 20px;
-        background: #075e54;
+      #audioBtn,
+      #sendBtn {
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          padding: 0;
+          font-size: 18px;
+          flex-shrink: 0;
+      }
+
+      #attachBtn {
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          padding: 0;
+          font-size: 20px;
+          flex-shrink: 0;
       }
       .checks {
         font-size: 12px;
@@ -337,6 +338,9 @@
 
       let usuario = localStorage.getItem('usuarioChat')
       let mensajeRespuesta = null
+      let colaPendientes = JSON.parse(localStorage.getItem('colaPendientes') || '[]')
+
+      sendBtn.style.display = 'none'
 
       if (!usuario) {
         const esMovil = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
@@ -368,13 +372,12 @@
         return div.innerHTML
       }
 
-
       function crearHoraConChecks(mensaje) {
         const horaDiv = document.createElement('div')
         horaDiv.className = 'hora'
 
         const horaTexto = document.createElement('span')
-        horaTexto.textContent = mensaje.hora
+        horaTexto.textContent = mensaje.hora || ''
 
         horaDiv.appendChild(horaTexto)
 
@@ -383,17 +386,23 @@
           checks.className = 'checks'
           checks.dataset.checkId = mensaje.id
 
+          if (mensaje.estado === 'pendiente') {
+            checks.textContent = ' 🕓'
+          } else if (mensaje.estado === 'enviado') {
+            checks.textContent = ' ✓'
+          } else {
+            checks.textContent = ' ✓✓'
+          }
+
           if (mensaje.estado === 'leido') {
             checks.classList.add('leido')
           }
-
-          checks.textContent = mensaje.estado === 'enviado' ? ' ✓' : ' ✓✓'
 
           horaDiv.appendChild(checks)
         }
 
         return horaDiv
-      }
+      }      
 
       function agregarMensaje(mensaje) {
         const div = document.createElement('div')
@@ -438,7 +447,7 @@
           audio.src = mensaje.archivo
           audio.style.maxWidth = '100%'
 
-          const horaDiv = document.createElement('div')
+          const horaDiv = crearHoraConChecks(mensaje)
           horaDiv.className = 'hora'
           horaDiv.innerHTML = `
             ${mensaje.hora}
@@ -490,33 +499,72 @@
             usuario: usuario,
           })
         }
+
+        if (mensaje.usuario !== usuario) {
+          socket.emit('mensajeEntregado', {
+            id: mensaje.id,
+            usuario: usuario,
+          })
+
+          socket.emit('mensajeLeido', {
+            id: mensaje.id,
+            usuario: usuario,
+          })
+        }
+
         messages.appendChild(div)
         messages.scrollTop = messages.scrollHeight
       }
 
+
+      function guardarCola() {
+        localStorage.setItem('colaPendientes', JSON.stringify(colaPendientes))
+      }      
+
+
+      function intentarEnviarPendientes() {
+        if (!socket.connected) return
+
+        colaPendientes.forEach(mensaje => {
+          socket.emit('mensaje', mensaje)
+        })
+
+        colaPendientes = []
+        guardarCola()
+      }
+
+
       function enviar() {
         const texto = input.value.trim()
-
         if (texto === '') return
 
-      socket.emit('mensaje', {
-        tipo: 'texto',
-        texto: texto,
-        usuario: usuario,
-        respuesta: mensajeRespuesta
-          ? mensajeRespuesta.texto || '[Imagen]'
-          : null,
-        hora: new Date().toLocaleTimeString('es-ES', {
-          hour: '2-digit',
-          minute: '2-digit'
-        })
-      })
+        const mensajeLocal = {
+          id: Date.now(),
+          tipo: 'texto',
+          texto,
+          usuario,
+          respuesta: mensajeRespuesta ? mensajeRespuesta.texto || '[Imagen]' : null,
+          hora: new Date().toLocaleTimeString('es-ES', {
+            hour: '2-digit',
+            minute: '2-digit'
+          }),
+          estado: 'pendiente'
+        }
+
+        agregarMensaje(mensajeLocal)
+        colaPendientes.push(mensajeLocal)
+        guardarCola()
+
+        intentarEnviarPendientes()
 
         input.value = ''
         input.style.height = '46px'
         input.blur()
+
         mensajeRespuesta = null
         replyPreview.style.display = 'none'
+        sendBtn.style.display = 'none'
+        audioBtn.style.display = 'inline-flex'
       }
 
       function enviarArchivo(file) {
@@ -695,17 +743,28 @@
       })
 
       input.addEventListener('input', function () {
-        input.style.height = 'auto'
-        input.style.height = Math.min(input.scrollHeight, 120) + 'px'
 
-        socket.emit('escribiendo', usuario)
+          input.style.height = 'auto'
+          input.style.height = Math.min(input.scrollHeight, 120) + 'px'
 
-        clearTimeout(typingTimeout)
+          if (input.value.trim() === '') {
+              sendBtn.style.display = 'none'
+              audioBtn.style.display = 'inline-flex'
+          } else {
+              sendBtn.style.display = 'inline-flex'
+              audioBtn.style.display = 'none'
+          }
 
-        typingTimeout = setTimeout(() => {
-          socket.emit('dejoDeEscribir', usuario)
-        }, 1200)
+          socket.emit('escribiendo', usuario)
+
+          clearTimeout(typingTimeout)
+
+          typingTimeout = setTimeout(() => {
+              socket.emit('dejoDeEscribir', usuario)
+          }, 1200)
       })
+
+      
       input.addEventListener('input', function () {
         input.style.height = 'auto'
         input.style.height = Math.min(input.scrollHeight, 120) + 'px'
@@ -769,10 +828,15 @@
 
       socket.on('estadoMensaje', function (data) {
         const check = document.querySelector(`[data-check-id="${data.id}"]`)
-
         if (!check) return
 
-        check.textContent = data.estado === 'enviado' ? '✓' : '✓✓'
+        if (data.estado === 'pendiente') {
+          check.textContent = ' 🕓'
+        } else if (data.estado === 'enviado') {
+          check.textContent = ' ✓'
+        } else {
+          check.textContent = ' ✓✓'
+        }
 
         if (data.estado === 'leido') {
           check.classList.add('leido')
@@ -780,7 +844,8 @@
           check.classList.remove('leido')
         }
       })
-
+      socket.on('connect', intentarEnviarPendientes)
+      window.addEventListener('online', intentarEnviarPendientes)
     </script>
   </body>
 </html>
