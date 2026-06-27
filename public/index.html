@@ -234,22 +234,26 @@
         cursor: pointer;
       }
       #audioBtn,
+      #attachBtn,
+      #audioBtn,
       #sendBtn {
-          width: 40px;
-          height: 40px;
-          border-radius: 50%;
-          padding: 0;
-          font-size: 18px;
-          flex-shrink: 0;
+        width: 42px;
+        height: 42px;
+        min-width: 42px;
+        min-height: 42px;
+        border-radius: 50%;
+        padding: 0;
+        border: none;
+        background: #075e54;
+        color: white;
+        font-size: 18px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
       }
-
-      #attachBtn {
-          width: 40px;
-          height: 40px;
-          border-radius: 50%;
-          padding: 0;
-          font-size: 20px;
-          flex-shrink: 0;
+      #sendBtn {
+        display: none;
       }
       .checks {
         font-size: 12px;
@@ -340,6 +344,9 @@
       let mensajeRespuesta = null
       let colaPendientes = JSON.parse(localStorage.getItem('colaPendientes') || '[]')
 
+      sendBtn.textContent = '➤'
+      audioBtn.style.display = 'inline-flex'
+
       sendBtn.style.display = 'none'
 
       if (!usuario) {
@@ -405,6 +412,22 @@
       }      
 
       function agregarMensaje(mensaje) {
+        const existente = document.querySelector(`[data-id="${mensaje.id}"]`)
+
+        if (existente) {
+          const check = existente.querySelector(`[data-check-id="${mensaje.id}"]`)
+          if (check) {
+            check.textContent = mensaje.estado === 'pendiente' ? ' 🕓' : mensaje.estado === 'enviado' ? ' ✓' : ' ✓✓'
+
+            if (mensaje.estado === 'leido') {
+              check.classList.add('leido')
+            } else {
+              check.classList.remove('leido')
+            }
+          }
+
+          return
+        }   
         const div = document.createElement('div')
 
         div.className =
